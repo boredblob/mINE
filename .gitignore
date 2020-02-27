@@ -2,3 +2,5 @@ c++/*.exe
 c++/*.ilk
 c++/*.obj
 c++/*.pdb
+
+desktop/lastFileName.txt
