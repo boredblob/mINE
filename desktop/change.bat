@@ -1,1 +1,1 @@
-wscript ./wrapper.vbs
+cscript ./wrapper.vbs

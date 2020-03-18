@@ -1,0 +1,1 @@
+Hover over me and left-click the square on the top-right corner to edit the notes. Right-click the square to hide the notes.
