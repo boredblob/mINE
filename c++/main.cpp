@@ -1,21 +1,12 @@
-#include <iostream>
+#include <stdio.h>
 #include <string>
-#include <iomanip>
 
-void linebreak(int lines = 1);
+using namespace std;
 
-int main(int argc, char* argv[]) {
-    // linebreak(2);
-    for (int i = 0; i < argc; i++) {
-        std::cout << std::hex << std::stoi(argv[i]);
-        linebreak();
-    }
-    // linebreak(2);
-    return 0;
-}
-
-void linebreak(int lines = 1) {
-    for (int i = 0; i < lines; i++) {
-        std::cout << "\n";
-    }
+int main(int argc, char** argv) {
+  int product = 1;
+  for (int i = 1; i < argc; i++) {
+    product *= (int)atoi(argv[i]);
+  }
+  printf("product: %d\n", product);
 }

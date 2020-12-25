@@ -8,7 +8,7 @@ namespace WallpaperSetter
 
     private const int SPIF_UPDATEINIFILE = 0x0001;
     private const int SPIF_SENDWININICHANGE = 0x0002;
-    private const int SPI_SETDESKWALLPAPER = 0x0014;        
+    private const int SPI_SETDESKWALLPAPER = 0x0014;
 
     [DllImport("user32.dll", EntryPoint = "SystemParametersInfo", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern int SystemParametersInfoSetWallpaper(int uAction, int uParam, string lpvParam, int fuWinIni);
