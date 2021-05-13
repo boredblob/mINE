@@ -1,1 +1,1 @@
-powershell -windowStyle hidden -noprofile -command "&{ start-process powershell -ArgumentList '-windowStyle hidden -noprofile -file C:\Users\omerk\Documents\GitHub\mINE\Start_Icons\getFolderName.ps1' -verb RunAs}"
+powershell -windowStyle hidden -noprofile -command "&{ start-process powershell -ArgumentList '-windowStyle hidden -noprofile -file C:\Users\omerk\Documents\GitHub\mINE\Start_Icons\updateChromeIcon.ps1' -verb RunAs}"
