@@ -4,3 +4,6 @@ c++/*.obj
 c++/*.pdb
 
 desktop/lastFileName.txt
+boyden/pricelist_converter/node_modules/
+boyden/pricelist_converter/pricelists/
+boyden/pricelist_converter/*.csv
