@@ -46,12 +46,12 @@ for _, row in table.loc[filter_arr].iterrows():
 
 # remove non-stocked items from stocked ranges
 for r in ranges:
-  sum = 0
+  numStocked = 0
   for p in ranges[r]:
     if (p[0]['Stock Rank'] == 'Primary Stock Ranking') | (p[0]['Stock Rank'] == 'Secondary Stock Ranking'):
-      sum = sum + 1
-  if (sum > 0):
-    if (sum != len(ranges[r])):
+      numStocked = numStocked + 1
+  if (numStocked > 0):
+    if (numStocked != len(ranges[r])):
       ranges[r] = [p for p in ranges[r] if (p[0]['Stock Rank'] == 'Primary Stock Ranking') | (p[0]['Stock Rank'] == 'Secondary Stock Ranking')]
 
 def appendIfNotContained(arr, index, priority):
@@ -130,33 +130,18 @@ for r in ranges:
 
   sheets[r] = [*split_range]
 
-# TODO: separate each range into pages of 4 by: 
-# (keep splitting into different sheets until there are less than 4 per page)
-#       - if wall is ceramic then porcelain floor on different sheet
-#       - sort by material (porcelain > ceramic), size (width*height), colour (alphabetical)
-#       - possibly if number isn't a multiple of 4, divide into chunks of type and round down to a page
 
-# e.g. 9 tiles, round up to 12. 3 splits required. Prioritise splitting on chunk boundaries first then just go by every 4.
-
-# step 1: sort each range as above
-# step 2: round up length of range array to nearest multiple of 4
-# step 3: number of splits = rounded up length - original length
-# step 4a: first find material differences to split by then for each split we now have two lists
-# step 4b: round up again to nearest multiple of 4 to each
-# step 5: then do the same to each material type for size, then just put 4 on a page and leave a remainder
-
-# either 1 or 2 lists for material if all porcelain or some porcelain some ceramic
+filenames_set = set([]) # ensure no duplicate filenames
 
 for d in displays:
   colours_set = set([])
   sizes_set = set([])
   finishes_set = set([])
-  decor = False
+  decor = any([('decor' in p[1]) for p in ranges[d]])
   for p in ranges[d]:
     colours_set.add(p[4].strip().title())
     sizes_set.add((p[2],p[3]))
-    finishes_set.add(p[0]['Finish'].strip().title())
-    if ((not decor) and ('decor' in p[1])): decor = True
+    finishes_set.add(p[0]['Finish'].split('/')[0].strip().title())
   info[d] = {
     'colours': sorted(list(colours_set)),
     'sizes': [x[0] + "x" + x[1] for x in sorted(list(sizes_set), key=lambda y: (int(y[0])*int(y[1])))],
@@ -168,6 +153,10 @@ for d in displays:
     for p in sheet:
       sheet_sizes.add(p[2]+"x"+p[3])
 
+
+    # if current sheet is just one size
+    # and more than one sheet is just this size
+    # add i at the end of the filename
     if (len(list(sheet_sizes)) == 1):
       if (len(info[d]['sizes']) == 1):
         if len(sheets[d]) > 1:
@@ -175,12 +164,21 @@ for d in displays:
         else:
           filename = d.title()
       else:
-        filename = d.title() + " " + list(sheet_sizes)[0]
+        if (decor and all([('decor' in p1[1]) for p1 in sheet])):
+          filename = d.title() + " Decor"
+        else:
+          if (sum([(all([list(sheet_sizes)[0] == p[2]+"x"+p[3] for p in other_sheet]) and not all(['decor' in p[1] for p in other_sheet])) for other_sheet in sheets[d]]) > 1):
+            filename = d.title()+ " " + str(i+1) + " " + list(sheet_sizes)[0]
+          else:
+            filename = d.title() + " " + list(sheet_sizes)[0]
     else:
       if len(sheets[d]) > 1:
         filename = d.title() + " " + str(i+1)
       else:
         filename = d.title()
+
+    if (filename in filenames_set): print('WARNING: Duplicate Filename:', filename) # warn about duplicates
+    filenames_set.add(filename)
     workbook = xlsxwriter.Workbook('./generated/' + filename + '.xlsx')
     worksheet = workbook.add_worksheet('Sheet1')
 
@@ -211,6 +209,8 @@ for d in displays:
       tiles_per_sqm = 1000000/float(width)/float(height) # guess
       sqm_rounding = {} if (round(tiles_per_sqm, 2) == tiles_per_sqm) else {'num_format': '0.00'} # round to 2dp but use python's automatic rounding otherwise because xlsxwriter's is dodgy
 
+      fancy_colour = (re.sub('(decor) ?', '', colour).strip()+' décor').upper() if ('decor' in colour) else colour.upper()
+
       worksheet.merge_range(row+0, col+0, row+2, col+6, 'BOYDEN TILES', fTitle)
       worksheet.merge_range(row+3, col+0, row+3, col+6, '2022', fCenter6)
       worksheet.merge_range(row+4, col+0, row+5, col+1, 'SOURCE', fCenterBold11)
@@ -220,7 +220,7 @@ for d in displays:
       worksheet.merge_range(row+7, col+2, row+8, col+6, code, fCenterBold12)
       worksheet.merge_range(row+9, col+0, row+9, col+6, '', fBorder)
       worksheet.merge_range(row+10, col+0, row+11, col+1, 'COLOUR', fCenterBold11)
-      worksheet.merge_range(row+10, col+2, row+11, col+6, colour, fCenterBold12)
+      worksheet.merge_range(row+10, col+2, row+11, col+6, fancy_colour, fCenterBold12)
       worksheet.merge_range(row+12, col+0, row+12, col+6, '', fBorder)
       worksheet.merge_range(row+13, col+0, row+14, col+1, 'SIZE', fCenterBold11)
       worksheet.merge_range(row+13, col+2, row+14, col+3, width, workbook.add_format({**wrap, **center, **bold, 'font_size': 20, 'bottom': 1, 'left': 1, 'top': 1}))
@@ -244,35 +244,42 @@ for d in displays:
         worksheet.write(i, col+6, '', fCenter10)
 
       offset = 0
+      # write colours on left
+      for i in range(min(len(colours), 7)):
+        worksheet.write(i+row+22, col, colours[i], fCenter10)
+        tick_cell(i+row+22, col+2, -1.5)
       if (len(sizes) > 1):
-        # write colours on left
-        for i, c in enumerate(colours):
-          worksheet.write(i+row+22, col, c, fCenter10)
-          tick_cell(i+row+22, col+2, -1.5)
         if (len(colours) + len(sizes) <= 7):
-          offset = 1
-          sizes_len = min(len(sizes), 5)
-          # write sizes on left
-          for i in range(sizes_len):
-            worksheet.write((7-sizes_len)+i+row+22, col, sizes[i], fCenter10)
-            tick_cell((7-sizes_len)+i+row+22, col+2, -1.5)
+          # if there is space, write sizes on right anyway
+          if ((not decor) and (len(finishes) <= 1)):
+            for i in range(min(len(sizes), 4)):
+              worksheet.write(i+row+24, col+4, sizes[i], fCenter10)
+              tick_cell(i+row+24, col+6, -1.5)
+          else:
+            offset = 1
+            sizes_len = min(len(sizes), 5)
+            # write sizes on left
+            for i in range(sizes_len):
+              worksheet.write((7-sizes_len)+i+row+22, col, sizes[i], fCenter10)
+              tick_cell((7-sizes_len)+i+row+22, col+2, -1.5)
         else:
-          # write sizes on right
-          for i in range(min(len(sizes), 5)):
-            worksheet.write(i+row+26, col+4, sizes[i], fCenter10)
-            tick_cell(i+row+26, col+6, -1.5)
-      else:
-        # write colours on left
-        for i, c in enumerate(colours):
-          worksheet.write(i+row+22, col, c, fCenter10)
-          tick_cell(i+row+22, col+2, -1.5)
+          # if there is space, write sizes higher on right
+          if ((not decor) and (len(finishes) <= 1)):
+            for i in range(min(len(sizes), 5)):
+              worksheet.write(i+row+24, col+4, sizes[i], fCenter10)
+              tick_cell(i+row+24, col+6, -1.5)
+          else:
+            # write sizes on right
+            for i in range(min(len(sizes), 5)):
+              worksheet.write(i+row+26, col+4, sizes[i], fCenter10)
+              tick_cell(i+row+26, col+6, -1.5)
       
       # if decor add Plain/Decor else add Finishes
       # offset to space all nicely
       if (decor):
         worksheet.write(row+24+offset, col+4, 'Plain', fCenter10)
         tick_cell(row+24+offset, col+6, -1.5)
-        worksheet.write(row+25+offset, col+4, 'Decor', fCenter10)
+        worksheet.write(row+25+offset, col+4, 'Décor', fCenter10)
         tick_cell(row+25+offset, col+6, -1.5)
       else:
         if (len(finishes) > 1):
@@ -291,7 +298,7 @@ for d in displays:
 
       worksheet.write(row+16, col+3, list_price, workbook.add_format({'font_color': 'white'}))
       worksheet.write(row+19, col+6, '', fBorder)
-      if wall: tick_cell(row+19, col+6)
+      if floor or wall: tick_cell(row+19, col+6)
       worksheet.write(row+20, col+6, '', fBorder)
       if floor: tick_cell(row+20, col+6)
       worksheet.write(row+20, col+0, '', workbook.add_format({'left': 1}))
@@ -306,19 +313,10 @@ for d in displays:
 
     worksheet.set_column_pixels(7, 7, 18)
     worksheet.set_row_pixels(29, 23)
-    if (len(sheet)>0): make_ticket(0, 0, d.upper(), sheet[0][0]['Product Code'], sheet[0][1].upper(), int(sheet[0][2]), int(sheet[0][3]), 'Wall' in sheet[0][0]['Application'], 'Floor' in sheet[0][0]['Application'], float(sheet[0][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[0][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[0][0]['Slip Rating'], info[d]['finishes'])
-    if (len(sheet)>1): make_ticket(0, 8, d.upper(), sheet[1][0]['Product Code'], sheet[1][1].upper(), int(sheet[1][2]), int(sheet[1][3]), 'Wall' in sheet[1][0]['Application'], 'Floor' in sheet[1][0]['Application'], float(sheet[1][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[1][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[1][0]['Slip Rating'], info[d]['finishes'])
-    if (len(sheet)>2): make_ticket(30, 0, d.upper(), sheet[2][0]['Product Code'], sheet[2][1].upper(), int(sheet[2][2]), int(sheet[2][3]), 'Wall' in sheet[2][0]['Application'], 'Floor' in sheet[2][0]['Application'], float(sheet[2][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[2][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[2][0]['Slip Rating'], info[d]['finishes'])
-    if (len(sheet)>3): make_ticket(30, 8, d.upper(), sheet[3][0]['Product Code'], sheet[3][1].upper(), int(sheet[3][2]), int(sheet[3][3]), 'Wall' in sheet[3][0]['Application'], 'Floor' in sheet[3][0]['Application'], float(sheet[3][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[3][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[3][0]['Slip Rating'], info[d]['finishes'])
+    
+    if (len(sheet)>0): make_ticket(0, 0, d.upper(), sheet[0][0]['Product Code'], sheet[0][1], int(sheet[0][2]), int(sheet[0][3]), 'Wall' in sheet[0][0]['Application'], 'Floor' in sheet[0][0]['Application'], float(sheet[0][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[0][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[0][0]['Slip Rating'], info[d]['finishes'])
+    if (len(sheet)>1): make_ticket(0, 8, d.upper(), sheet[1][0]['Product Code'], sheet[1][1], int(sheet[1][2]), int(sheet[1][3]), 'Wall' in sheet[1][0]['Application'], 'Floor' in sheet[1][0]['Application'], float(sheet[1][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[1][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[1][0]['Slip Rating'], info[d]['finishes'])
+    if (len(sheet)>2): make_ticket(30, 0, d.upper(), sheet[2][0]['Product Code'], sheet[2][1], int(sheet[2][2]), int(sheet[2][3]), 'Wall' in sheet[2][0]['Application'], 'Floor' in sheet[2][0]['Application'], float(sheet[2][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[2][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[2][0]['Slip Rating'], info[d]['finishes'])
+    if (len(sheet)>3): make_ticket(30, 8, d.upper(), sheet[3][0]['Product Code'], sheet[3][1], int(sheet[3][2]), int(sheet[3][3]), 'Wall' in sheet[3][0]['Application'], 'Floor' in sheet[3][0]['Application'], float(sheet[3][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[3][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[3][0]['Slip Rating'], info[d]['finishes'])
 
     workbook.close()
-
-# TODO: wrap text for all lines
-# Left List: 
-#   if len(colours) + len(sizes) + 1 <= 7: colours, , sizes
-#   else: colours
-# Right List:
-#   if len(colours) + len(sizes) + 1 <= 7: material, , Plain/Decor/Finishes, , Slip Rating
-#   else: material, Plain/Decor/Finishes, Sizes, Slip Rating
-#     
-# Material, (Plain,Decor) if Decor else Finishes, Sizes, Slip Rating
