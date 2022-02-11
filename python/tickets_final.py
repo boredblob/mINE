@@ -148,6 +148,7 @@ for d in displays:
     'finishes': sorted(list(finishes_set))
   }
 
+  filenames_list = []
   for i, sheet in enumerate(sheets[d]):
     sheet_sizes = set([])
     for p in sheet:
@@ -160,7 +161,7 @@ for d in displays:
     if (len(list(sheet_sizes)) == 1):
       if (len(info[d]['sizes']) == 1):
         if len(sheets[d]) > 1:
-          filename = d.title() + " " + str(i+1)
+          filename = d.title()
         else:
           filename = d.title()
       else:
@@ -168,19 +169,50 @@ for d in displays:
           filename = d.title() + " Decor"
         else:
           if (sum([(all([list(sheet_sizes)[0] == p[2]+"x"+p[3] for p in other_sheet]) and not all(['decor' in p[1] for p in other_sheet])) for other_sheet in sheets[d]]) > 1):
-            filename = d.title()+ " " + str(i+1) + " " + list(sheet_sizes)[0]
+            filename = d.title() + " " + list(sheet_sizes)[0]
           else:
             filename = d.title() + " " + list(sheet_sizes)[0]
     else:
       if len(sheets[d]) > 1:
-        filename = d.title() + " " + str(i+1)
+        filename = d.title()
       else:
         filename = d.title()
 
+    filenames_list.append(filename)
+
+  # add numbers to filename if sizes are duplicated
+  for size in info[d]['sizes']:
+    instances_of_size = []
+    for i, filename in enumerate(filenames_list):
+      if (size in filename):
+        instances_of_size.append(i)
+    if (len(instances_of_size) > 1):
+      for i, instance in enumerate(instances_of_size):
+        print("Duplicate sizes: ", filenames_list[instance])
+        filenames_list[instance] += (" " + str(i+1))
+
+  # then add new numbers to the filenames if there are still duplicates
+  instances_of_name = set([])
+  for i, filename1 in enumerate(filenames_list):
+    for j, filename2 in enumerate(filenames_list):
+      if (i != j):
+        if (filename1 == filename2):
+          print("Duplicate names: ", filename1, filename2)
+          instances_of_name.add(i)
+          instances_of_name.add(j)
+  if (len(instances_of_name) > 1):
+    for i, instance in enumerate(list(instances_of_name)):
+      filenames_list[instance] += (" " + str(i+1))
+  
+  # warn about duplicate filenames
+  for filename in filenames_list:
     if (filename in filenames_set): print('WARNING: Duplicate Filename:', filename) # warn about duplicates
     filenames_set.add(filename)
-    workbook = xlsxwriter.Workbook('./generated/' + filename + '.xlsx')
+
+  for i, sheet in enumerate(sheets[d]):
+    workbook = xlsxwriter.Workbook('./generated/' + filenames_list[i] + '.xlsx')
     worksheet = workbook.add_worksheet('Sheet1')
+    worksheet.set_margins(.25, .25, .75, .75)
 
     wrap = {'text_wrap': True}
     border = {'border': 1}
@@ -205,7 +237,7 @@ for d in displays:
     fCenterBold16 = workbook.add_format({**wrap, **center, **border, **bold, 'font_size': 16})
     fCenterBold20 = workbook.add_format({**wrap, **center, **border, **bold, 'font_size': 20})
 
-    def make_ticket(row, col, product_range="", code="", colour="", width=0, height=0, wall=True, floor=True, list_price=0, colours=[], sizes=[], material="PORCELAIN", slip_rating="", finishes=[]):
+    def make_ticket(row, col, product_range="", code="", colour="", width=0, height=0, wall=True, floor=True, list_price=0, colours=[], sizes=[], material="PORCELAIN", slip_rating="", finishes=[], list_colour=""):
       tiles_per_sqm = 1000000/float(width)/float(height) # guess
       sqm_rounding = {} if (round(tiles_per_sqm, 2) == tiles_per_sqm) else {'num_format': '0.00'} # round to 2dp but use python's automatic rounding otherwise because xlsxwriter's is dodgy
 
@@ -231,8 +263,8 @@ for d in displays:
       worksheet.merge_range(row+16, col+4, row+17, col+6, '=A17*1.2', workbook.add_format({**wrap, **center, **bold, **border, 'font_size': 16, 'num_format': '"£"#,##0.00'}))
       worksheet.merge_range(row+18, col+0, row+18, col+2, 'PER MTR EX VAT', fCenter10)
       worksheet.merge_range(row+18, col+4, row+18, col+6, 'PER MTR INC VAT', fCenter10)
-      worksheet.write(row+19, col+0, '=1/A16', workbook.add_format({**wrap, **center, **border, 'font_size': 10, **sqm_rounding}))
-      worksheet.merge_range(row+19, col+1, row+19, col+2, 'TILES PER MTR', fCenter10)
+      worksheet.write(row+19, col+0, '=1/A16', workbook.add_format({**wrap, **center, 'bottom': 1, 'left': 1, 'top': 1, 'font_size': 10, **sqm_rounding}))
+      worksheet.merge_range(row+19, col+1, row+19, col+2, 'TILES PER MTR', workbook.add_format({**wrap, **center, 'bottom': 1, 'right': 1, 'top': 1, 'font_size': 10}))
       worksheet.merge_range(row+19, col+4, row+19, col+5, 'Wall', fCenter10)
       worksheet.merge_range(row+20, col+4, row+20, col+5, 'Floor', fCenter10)
       worksheet.merge_range(row+21, col+0, row+21, col+2, 'Available in:', fCenterBold10)
@@ -244,6 +276,14 @@ for d in displays:
         worksheet.write(i, col+6, '', fCenter10)
 
       offset = 0
+      # work out how many finishes this colour comes in
+      colour_finishes_set = set([])
+      for p in ranges[d]:
+        if (list_colour in p[4].strip().lower()):
+          colour_finishes_set.add(p[0]['Finish'].split('/')[0].strip().title())
+      colour_finishes = list(colour_finishes_set)
+      num_finishes = len(colour_finishes)
+
       # write colours on left
       for i in range(min(len(colours), 7)):
         worksheet.write(i+row+22, col, colours[i], fCenter10)
@@ -283,7 +323,7 @@ for d in displays:
         tick_cell(row+25+offset, col+6, -1.5)
       else:
         if (len(finishes) > 1):
-          for i, f in enumerate(finishes):
+          for i, f in enumerate(colour_finishes):
             worksheet.write(i+row+24+offset, col+4, f, fCenter10)
             tick_cell(i+row+24+offset, col+6, -1.5)
 
@@ -314,9 +354,9 @@ for d in displays:
     worksheet.set_column_pixels(7, 7, 18)
     worksheet.set_row_pixels(29, 23)
     
-    if (len(sheet)>0): make_ticket(0, 0, d.upper(), sheet[0][0]['Product Code'], sheet[0][1], int(sheet[0][2]), int(sheet[0][3]), 'Wall' in sheet[0][0]['Application'], 'Floor' in sheet[0][0]['Application'], float(sheet[0][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[0][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[0][0]['Slip Rating'], info[d]['finishes'])
-    if (len(sheet)>1): make_ticket(0, 8, d.upper(), sheet[1][0]['Product Code'], sheet[1][1], int(sheet[1][2]), int(sheet[1][3]), 'Wall' in sheet[1][0]['Application'], 'Floor' in sheet[1][0]['Application'], float(sheet[1][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[1][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[1][0]['Slip Rating'], info[d]['finishes'])
-    if (len(sheet)>2): make_ticket(30, 0, d.upper(), sheet[2][0]['Product Code'], sheet[2][1], int(sheet[2][2]), int(sheet[2][3]), 'Wall' in sheet[2][0]['Application'], 'Floor' in sheet[2][0]['Application'], float(sheet[2][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[2][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[2][0]['Slip Rating'], info[d]['finishes'])
-    if (len(sheet)>3): make_ticket(30, 8, d.upper(), sheet[3][0]['Product Code'], sheet[3][1], int(sheet[3][2]), int(sheet[3][3]), 'Wall' in sheet[3][0]['Application'], 'Floor' in sheet[3][0]['Application'], float(sheet[3][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[3][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[3][0]['Slip Rating'], info[d]['finishes'])
+    if (len(sheet)>0): make_ticket(0, 0, d.upper(), sheet[0][0]['Product Code'], sheet[0][1], int(sheet[0][2]), int(sheet[0][3]), 'Wall' in sheet[0][0]['Application'], 'Floor' in sheet[0][0]['Application'], float(sheet[0][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[0][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[0][0]['Slip Rating'], info[d]['finishes'], sheet[0][4])
+    if (len(sheet)>1): make_ticket(0, 8, d.upper(), sheet[1][0]['Product Code'], sheet[1][1], int(sheet[1][2]), int(sheet[1][3]), 'Wall' in sheet[1][0]['Application'], 'Floor' in sheet[1][0]['Application'], float(sheet[1][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[1][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[1][0]['Slip Rating'], info[d]['finishes'], sheet[1][4])
+    if (len(sheet)>2): make_ticket(30, 0, d.upper(), sheet[2][0]['Product Code'], sheet[2][1], int(sheet[2][2]), int(sheet[2][3]), 'Wall' in sheet[2][0]['Application'], 'Floor' in sheet[2][0]['Application'], float(sheet[2][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[2][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[2][0]['Slip Rating'], info[d]['finishes'], sheet[2][4])
+    if (len(sheet)>3): make_ticket(30, 8, d.upper(), sheet[3][0]['Product Code'], sheet[3][1], int(sheet[3][2]), int(sheet[3][3]), 'Wall' in sheet[3][0]['Application'], 'Floor' in sheet[3][0]['Application'], float(sheet[3][0]['List Price']), info[d]['colours'], info[d]['sizes'], 'CERAMIC' if sheet[3][0]['Material'] == 'Ceramic' else 'PORCELAIN', sheet[3][0]['Slip Rating'], info[d]['finishes'], sheet[3][4])
 
     workbook.close()
