@@ -143,7 +143,7 @@ for d in displays:
     sizes_set.add((p[2],p[3]))
     finishes_set.add(p[0]['Finish'].split('/')[0].strip().title())
   info[d] = {
-    'colours': sorted(list(colours_set)),
+    'colours': sorted(list(colours_set), key=lambda c: (c=="Hop Mix", c)),
     'sizes': [x[0] + "x" + x[1] for x in sorted(list(sizes_set), key=lambda y: (int(y[0])*int(y[1])))],
     'finishes': sorted(list(finishes_set))
   }
@@ -188,7 +188,7 @@ for d in displays:
         instances_of_size.append(i)
     if (len(instances_of_size) > 1):
       for i, instance in enumerate(instances_of_size):
-        print("Duplicate sizes: ", filenames_list[instance])
+        # print("Duplicate sizes: ", filenames_list[instance])
         filenames_list[instance] += (" " + str(i+1))
 
   # then add new numbers to the filenames if there are still duplicates
@@ -197,7 +197,7 @@ for d in displays:
     for j, filename2 in enumerate(filenames_list):
       if (i != j):
         if (filename1 == filename2):
-          print("Duplicate names: ", filename1, filename2)
+          # print("Duplicate names: ", filename1, filename2)
           instances_of_name.add(i)
           instances_of_name.add(j)
   if (len(instances_of_name) > 1):
@@ -243,6 +243,9 @@ for d in displays:
 
       fancy_colour = (re.sub('(decor) ?', '', colour).strip()+' décor').upper() if ('decor' in colour) else colour.upper()
 
+      if (d == "moments" and ("HOP MIX" in fancy_colour)): fancy_name = "HOP MIX"
+      if (d == "parquet" and fancy_colour == "CHENE"): fancy_name = "CHENE (OAK)"
+
       worksheet.merge_range(row+0, col+0, row+2, col+6, 'BOYDEN TILES', fTitle)
       worksheet.merge_range(row+3, col+0, row+3, col+6, '2022', fCenter6)
       worksheet.merge_range(row+4, col+0, row+5, col+1, 'SOURCE', fCenterBold11)
@@ -258,12 +261,19 @@ for d in displays:
       worksheet.merge_range(row+13, col+2, row+14, col+3, width, workbook.add_format({**wrap, **center, **bold, 'font_size': 20, 'bottom': 1, 'left': 1, 'top': 1}))
       worksheet.merge_range(row+13, col+4, row+14, col+4, 'X', workbook.add_format({**wrap, **center, **bold, 'font_size': 20, 'bottom': 1, 'top': 1}))
       worksheet.merge_range(row+13, col+5, row+14, col+6, height, workbook.add_format({**wrap, **center, **bold, 'font_size': 20, 'bottom': 1, 'right': 1, 'top': 1}))
-      worksheet.merge_range(row+15, col+0, row+15, col+6, '=C14*F14/1000000', workbook.add_format({**wrap, 'left': 1, 'right': 1, 'font_color': 'white'}))
-      worksheet.merge_range(row+16, col+0, row+17, col+2, '=ROUND(A20*D17, 2)', workbook.add_format({**wrap, **center, **bold, **border, 'font_size': 16, 'num_format': '"£"#,##0.00'}))
-      worksheet.merge_range(row+16, col+4, row+17, col+6, '=A17*1.2', workbook.add_format({**wrap, **center, **bold, **border, 'font_size': 16, 'num_format': '"£"#,##0.00'}))
+      
+      # dynamically generate formulas based on location
+      sizeFormula = "=" + xlsxwriter.utility.xl_rowcol_to_cell(row+13, col+2) + "*" + xlsxwriter.utility.xl_rowcol_to_cell(row+13, col+5) + "/1000000" # =C14*F14/1000000
+      exVATPriceFormula = "=ROUND(" + xlsxwriter.utility.xl_rowcol_to_cell(row+19, col+0) + "*" + xlsxwriter.utility.xl_rowcol_to_cell(row+16, col+3) + ", 2)" # =ROUND(A20*D17, 2)
+      incVATPriceForumla = "=" + xlsxwriter.utility.xl_rowcol_to_cell(row+16, col+0) + "*1.2" # =A17*1.2
+      perSQMFormula = "=1/" + xlsxwriter.utility.xl_rowcol_to_cell(row+15, col+0) # =1/A16
+
+      worksheet.merge_range(row+15, col+0, row+15, col+6, sizeFormula, workbook.add_format({**wrap, 'left': 1, 'right': 1, 'font_color': 'white'}))
+      worksheet.merge_range(row+16, col+0, row+17, col+2, exVATPriceFormula,workbook.add_format({**wrap, **center, **bold, **border, 'font_size': 16, 'num_format': '"£"#,##0.00'}))
+      worksheet.merge_range(row+16, col+4, row+17, col+6, incVATPriceForumla, workbook.add_format({**wrap, **center, **bold, **border, 'font_size': 16, 'num_format': '"£"#,##0.00'}))
       worksheet.merge_range(row+18, col+0, row+18, col+2, 'PER MTR EX VAT', fCenter10)
       worksheet.merge_range(row+18, col+4, row+18, col+6, 'PER MTR INC VAT', fCenter10)
-      worksheet.write(row+19, col+0, '=1/A16', workbook.add_format({**wrap, **center, 'bottom': 1, 'left': 1, 'top': 1, 'font_size': 10, **sqm_rounding}))
+      worksheet.write(row+19, col+0, perSQMFormula, workbook.add_format({**wrap, **center, 'bottom': 1, 'left': 1, 'top': 1, 'font_size': 10, **sqm_rounding}))
       worksheet.merge_range(row+19, col+1, row+19, col+2, 'TILES PER MTR', workbook.add_format({**wrap, **center, 'bottom': 1, 'right': 1, 'top': 1, 'font_size': 10}))
       worksheet.merge_range(row+19, col+4, row+19, col+5, 'Wall', fCenter10)
       worksheet.merge_range(row+20, col+4, row+20, col+5, 'Floor', fCenter10)
