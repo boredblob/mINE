@@ -1,4 +1,3 @@
-from numpy import true_divide
 import tabula
 import pandas as pd
 
@@ -19,7 +18,7 @@ table = table.loc[[(not str(item).startswith("..")) for item in table["Unnamed: 
 table = table.loc[(table['MQ'].str.len() > 0) | (table['PALLET / CRATE *'].str.len() > 0)]
 table = table.loc[table["Unnamed: 0"] != "Codice"]
 
-table.to_csv("c.csv")
+table.to_csv("pricelist_raw.csv")
 
 pricelist = []
 
@@ -75,7 +74,7 @@ for index, r in table.iterrows():
 
 fields = ["Product Code", "Size", "UOM", "Net Price per UOM", "Net Price per Tile", "Box Qty", "Box Weight", "Boxes per Pallet", "Pallet Weight", "Width", "Height"]
 
-pd.DataFrame(pricelist, columns=fields).to_csv("b.csv")
+pd.DataFrame(pricelist, columns=fields).to_csv("pricelist.csv")
 
 # table = table.loc[[isInRange(item) for item in table["Unnamed: 0"]]]
 # table.to_csv("a.csv")
