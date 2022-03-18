@@ -2,7 +2,7 @@ import pandas
 import re
 import xlsxwriter
 
-table = pandas.io.parsers.read_csv('stock products.csv')
+table = pandas.io.parsers.read_csv('stock products march.csv')
 displays = open('displays.txt', 'r').readline().split(',')
 ranges = {}
 sheets = {}
@@ -36,13 +36,14 @@ for _, row in table.loc[filter_arr].iterrows():
   if (match != None):
     size = match.group().split('x')
     width = str(min(int(size[0]), int(size[1])))
+    thickness = float(size[2]) if (len(size) > 2) else 10
     height = str(max(int(size[0]), int(size[1])))
     filtered_colour = description[re.search(display, description).span()[1]:match.span()[0]]
     match2 = re.search('([a-z-][a-z-][a-z-]+ ?)+', filtered_colour)
     if (match2 != None):
       filtered_colour = re.sub('((lapato)|(channel)|(floor)|(wall)|(rectified)|(metal)|(edison)|(large)|(sense)|(land)|(absolute)|(textures)|(split)|(relieve)|(reed)) *', '', match2.group()).strip()
       list_colour = re.sub('((decor)|(semi-polished)|(polished)|(matt)|(satin)|(gloss)|(bevel)|(brick)|(anti-slip)|(bumpy)|(hex)|(natural)) *', '', filtered_colour).strip()
-      ranges[display].append([row, filtered_colour, width, height, list_colour])
+      ranges[display].append([row, filtered_colour, width, height, list_colour, thickness])
 
 # remove non-stocked items from stocked ranges
 for r in ranges:
@@ -74,7 +75,7 @@ def splitSubArray(arr, subarr, indexOfSubArr, splitIndex):
 
 # generate possible places to split arrays
 for r in ranges:
-  sorted_range = sorted(ranges[r], key=lambda p: ((p[0]['Material'] == 'Ceramic'), not ('decor' in p[1]), float(p[2])*float(p[3]), p[4], p[1]))
+  sorted_range = sorted(ranges[r], key=lambda p: ((p[0]['Material'] == 'Ceramic'), not ('decor' in p[1]), float(p[2])*float(p[3]), -p[5], p[4], p[1]))
   splits = []
 
   current_material = sorted_range[0][0]['Material']
