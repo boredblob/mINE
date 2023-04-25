@@ -108,10 +108,10 @@
   }
 
   table {
-    width: auto;
-    margin: 0 2rem;
-    padding: 1rem 0;
+    width: 100%;
+    padding: 1rem 2rem;
     height: 100%;
+    box-sizing: border-box;
   }
 
   table>tr>td>textarea {
@@ -120,6 +120,11 @@
     padding: 0;
     margin: 0;
     border-radius: 0;
+  }
+
+  footer>p {
+    width: 100%;
+    text-align: center;
   }
 
   button.copy {
