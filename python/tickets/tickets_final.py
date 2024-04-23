@@ -2,8 +2,8 @@ import pandas
 import re
 import xlsxwriter
 
-table = pandas.io.parsers.read_csv('stock products april.csv')
-displays = open('displays.txt', 'r').readline().split(',')
+table = pandas.io.parsers.read_csv('stock products july.csv')
+displays = open('displays 2023.txt', 'r').readline().split(',')
 ranges = {}
 sheets = {}
 info = {}
@@ -76,6 +76,7 @@ def splitSubArray(arr, subarr, indexOfSubArr, splitIndex):
 # generate possible places to split arrays
 for r in ranges:
   sorted_range = sorted(ranges[r], key=lambda p: ((p[0]['Material'] == 'Ceramic'), not ('decor' in p[1]), float(p[2])*float(p[3]), -p[5], p[4], p[1]))
+  print(r)
   splits = []
 
   current_material = sorted_range[0][0]['Material']
@@ -248,7 +249,7 @@ for d in displays:
       if (d == "parquet" and fancy_colour == "CHENE"): fancy_name = "CHENE (OAK)"
 
       worksheet.merge_range(row+0, col+0, row+2, col+6, 'BOYDEN TILES', fTitle)
-      worksheet.merge_range(row+3, col+0, row+3, col+6, '2022', fCenter6)
+      worksheet.merge_range(row+3, col+0, row+3, col+6, '2023', fCenter6)
       worksheet.merge_range(row+4, col+0, row+5, col+1, 'SOURCE', fCenterBold11)
       worksheet.merge_range(row+4, col+2, row+5, col+6, product_range, fCenterBold12)
       worksheet.merge_range(row+6, col+0, row+6, col+6, '', fBorder)

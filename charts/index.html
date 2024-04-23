@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DnD Rolls</title>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
+</head>
+<body>
+  <canvas width=400 height=400></canvas>
+  <script>
+    const iters = 10_000_000;
+    const rollType = "10d6";
+
+    let [numberOfDice, diceType] = rollType.split("d").map(e => Number(e));
+    let maxRoll = numberOfDice * diceType;
+
+    let rolls = Array(maxRoll+1).fill(0);
+    for (let i = 0; i < iters; i++) {
+      let roll = 0;
+      for (let j = 0; j < numberOfDice; j++) {
+        roll += Math.floor(Math.random()*diceType)+1
+      }
+      rolls[roll]++;
+    }
+    rolls.shift();
+    // rolls = rolls.map(e => e/iters);
+    console.log(rolls);
+
+    const data = {
+      datasets: [{
+        data: rolls,
+        borderWidth: 0,
+        label: `10 million rolls of a ${rollType}`,
+      }],
+      labels: Array.from(Array(maxRoll).keys()).map(e => e+=1)
+    };
+    const config = {
+      type: 'bar',
+      data: data,
+      options: {
+        legend: {
+          display: false
+        },
+        scales: {
+          y: {
+            type: "linear",
+            beginAtZero: true,
+            min: 0,
+            // max: iters
+          },
+          x: {
+            type: "linear",
+            min: 1,
+            max: maxRoll,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        },
+        maintainAspectRatio: false
+      },
+    };
+
+    const canvas = document.querySelector("canvas");
+    let ctx = canvas.getContext("2d");
+    let chart = new Chart(ctx, config);
+  </script>
+</body>
+</html>

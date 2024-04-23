@@ -1,0 +1,7 @@
+give out 23 cards - 3, split between 5 models
+
+every round, give each model their cards and the game history
+take the highest valued outputs for people, weapons, and locations as the guess
+go through the next people's cards to see who has what they're looking for
+if no one has it they win
+whoever wins gets 100 points
