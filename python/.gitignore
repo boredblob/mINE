@@ -2,5 +2,8 @@
 *.csv
 *.pdf
 *.zip
+*.png
+*.jpg
 glide-text2im-main/
 watch-history.json
+/collage
