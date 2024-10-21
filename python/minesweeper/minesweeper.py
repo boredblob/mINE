@@ -1,4 +1,5 @@
 import random
+from collections import deque
 
 class minesweeper_game:
   def __init__(self, grid_width, grid_height, num_mines):
@@ -10,6 +11,8 @@ class minesweeper_game:
     self.cleared_grid = [False]*grid_width*grid_height
     self.first_clear = True
     self.MAX_REGEN_ATTEMPTS = 500
+    self.num_cleared_cells = 0
+    self.num_flagged_cells = 0
 
   def __str__(self) -> str:
     grid_str = f""
@@ -24,7 +27,7 @@ class minesweeper_game:
     return grid_str
 
   def get_neighbouring_cells(self, x, y):
-    neighbours = []
+    neighbours = deque(maxlen=9)
     for dy in range(-1 if y > 0 else 0, 2 if y < self.grid_height-1 else 1):
       for dx in range(-1 if x > 0 else 0, 2 if x < self.grid_width-1 else 1):
         if not (dy == 0 and dx == 0):
@@ -64,6 +67,7 @@ class minesweeper_game:
   def clear_cell(self, x, y) -> int: # returns 1 if action won game, -1 for loss, 0 otherwise
     idx = self.to_idx(x, y)
     if self.flags_grid[idx]: return 0 # can't clear a flagged cell
+    if self.cleared_grid[idx]: return 0 # can't clear a cleared cell
 
     if self.first_clear: # if first click of the game, make sure you don't insta-lose or have to guess blindly
       for i in range(self.MAX_REGEN_ATTEMPTS):
@@ -79,6 +83,7 @@ class minesweeper_game:
     # check for empty adjacent cells and recursively clear them and their neighbours
     cleared_cells = set()
     self.clear_neighbours(idx, cleared_cells)
+    self.num_cleared_cells = self.cleared_grid.count(True)
     return int(self.check_for_win())
   
   def clear_neighbours(self, idx, cleared_cells):
@@ -94,7 +99,10 @@ class minesweeper_game:
   
   def flag_cell(self, x, y) -> int: # returns 1 if action won game
     idx = self.to_idx(x, y)
-    self.flags_grid[idx] = not self.flags_grid[idx]
+    if self.cleared_grid[idx]: return 0 # can't flag a cleared cell
+    is_flagged = self.flags_grid[idx]
+    self.num_flagged_cells += (-1 if is_flagged else 1)
+    self.flags_grid[idx] = not is_flagged
     return int(self.check_for_win())
 
   def check_for_win(self) -> bool:

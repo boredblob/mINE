@@ -1,5 +1,6 @@
 import minesweeper
 import numpy as np
+from timeit import timeit
 
 MAX_SOLVER_ITERATIONS = 100
 
@@ -87,4 +88,4 @@ def test_solver(solver_func, num_games=10):
   print(str(round((wins / num_games)*100, 2)) + "%")
   return wins / num_games
 
-test_solver(solve_game, 1000)
+print(timeit("test_solver(solve_game, 1000)", globals=locals(), number=1))
