@@ -87,6 +87,7 @@ class minesweeper_game:
     return int(self.check_for_win())
   
   def clear_neighbours(self, idx, cleared_cells):
+    if self.flags_grid[idx]: return
     self.cleared_grid[idx] = True
     cleared_cells.add(idx)
     if self.mines_grid[idx] == 0:
